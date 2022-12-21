@@ -3,6 +3,7 @@
 #
 
 from math import ceil
+import tempfile
 import shutil
 import zipfile
 import tarfile
@@ -87,11 +88,10 @@ def proc(repo: str, indir: str, indexer: Indexer.Indexer, pbar: tqdm, minsize, o
 
 @click.command()
 @click.option('--archives', default='.', help='Archives dir')
-@click.option('--tmpdir', help='temporary directory to extract archives at.')
 @click.option('--patterns', type=click.Path(exists=True), help='Patterns file e.g. .gitignore')
 @click.option('--minsize', default=3, type=click.INT, help='minsize to process in mib')
 @click.option('--threads', default=1, help='Threads count to utilize', type=click.INT)
-def main(archives, patterns, threads, minsize, tmpdir):
+def main(archives, patterns, threads, minsize):
     archiveslist = Indexer.Indexer(
         basedir=archives, init=False).read_index(errors=False)
     indexer = Indexer.Indexer(
@@ -100,6 +100,8 @@ def main(archives, patterns, threads, minsize, tmpdir):
     # targets = archiveslist - index
     targets = [archive for archive in archiveslist if archive not in indexes]
     total = len(targets)
+
+    print('processing', total, 'archives...')
 
     # read patterns, remove empty lines, remove comments
     patterns = open(patterns, 'r').read().splitlines()
@@ -111,6 +113,8 @@ def main(archives, patterns, threads, minsize, tmpdir):
 
     pool = Pool(threads)
 
+    tempdir = tempfile.gettempdir()
+
     _func = partial(
         proc,
         indir=archives,
@@ -119,7 +123,7 @@ def main(archives, patterns, threads, minsize, tmpdir):
         minsize=minsize,
         remove_patterns=patterns,
         outdir=archives,
-        tmp=tmpdir,
+        tmp=tempdir,
     )
 
     pool.map(
