@@ -88,7 +88,7 @@ def main(target, max_mb, max_count, clear):
     progress_bar = tqdm(total=max_mb * 1024 * 1024,
                         unit='iB', unit_scale=True, leave=True)
 
-    cpdsize = 0
+    cpdsize = os.path.getsize(target)
     while cpdsize < max_mb * 1024 * 1024 and len(targets) > 0:
         repo = random.choice(targets)
         targets.remove(repo)
