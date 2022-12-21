@@ -27,7 +27,7 @@ def make_samples_list(origin_dir, max_count):
         os.path.join(origin_dir, "index"))
 
     # select MAX_SAMPLE_COUNT from indexes randomly
-    if max_count is math.inf:
+    if max_count is math.inf or max_count is None or max_count >= len(indexes):
         targets = indexes
         random.shuffle(targets)
     else:
@@ -70,7 +70,7 @@ def clear_dir(target_dir):
 @click.command()
 @click.option('--target', default='~/data/github-public-archives/samples', help='target sample dir')
 @click.option('--max-mb', type=click.INT, default=50 * 1024, help='max sample size in MB')
-@click.option('--max-count', type=click.INT, default=MAX_DEFAULT, help='max sample count (number of repos)')
+@click.option('--max-count', type=click.INT, default=None, help='max sample count (number of repos)')
 @click.option('--clear', type=click.BOOL, default=False, help='rather to clear the target dir before sampling')
 def main(target, max_mb, max_count, clear):
     if clear:
@@ -90,10 +90,10 @@ def main(target, max_mb, max_count, clear):
 
     cpdsize = 0
     while cpdsize < max_mb * 1024 * 1024 and len(targets) > 0:
-        target = random.choice(targets)
-        targets.remove(target)
-        size = cp(DS_ORIGIN_DIR, target, target)
-        samples_indexer.add(target)
+        repo = random.choice(targets)
+        targets.remove(repo)
+        size = cp(DS_ORIGIN_DIR, target, repo)
+        samples_indexer.add(repo)
         cpdsize += size
         progress_bar.update(size)
 
