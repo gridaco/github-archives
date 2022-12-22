@@ -77,7 +77,7 @@ def unzip_file(file, dir, name=None, remove=False, cleaner=None):
 
     type = mime.from_file(file)
 
-    if type == 'application/gzip':
+    if type == 'application/gzip' or type == "application/x-gzip":
         try:
             # tar.gz if via wget
             tar = tarfile.open(file, 'r:gz')
@@ -90,6 +90,12 @@ def unzip_file(file, dir, name=None, remove=False, cleaner=None):
                 final_path = new_path
                 os.rename(old_path, new_path)
         except tarfile.ExtractError as e:
+            os.remove(file)
+            return False
+        except EOFError as e:
+            os.remove(file)
+            return False
+        except IsADirectoryError as e:
             os.remove(file)
             return False
 
