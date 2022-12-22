@@ -8,6 +8,7 @@ from tqdm import tqdm
 import github_unarchives as unarchiver
 import github_archives_index
 import glob
+import shutil
 
 _DIR = pathlib.Path(__file__).parent.absolute()
 TMPDIR = os.path.join(tempfile.gettempdir(), 'public-github-archives/index')
@@ -24,7 +25,7 @@ def initdb(path):
     db = sqlite3.connect(path)
     cursor = db.cursor()
     cursor.execute(
-        'CREATE TABLE IF NOT EXISTS files (repo text, path text, content text)')
+        'CREATE TABLE IF NOT EXISTS files (repo text, path text, content text, language text, PRIMARY KEY (repo, path))')
     db.commit()
     return db, cursor
 
@@ -35,14 +36,14 @@ db, cursor = initdb(DBPATH)
 def with_extensios(path, exts):
     files = []
     for ext in exts:
-        print('ext', ext, path)
         files += glob.glob(path+'/**/*'+ext, recursive=True)
-        print(files)
     return files
 
 
 samples = github_archives_index.Indexer(DSDIR)
 repos = samples.read_index()
+
+
 total = len(repos)
 
 # patterns
@@ -56,40 +57,58 @@ if __name__ == "__main__":
 
         # iterate over repos
         for item in repos:
+            tqdm.write('👇 '+item)
             # unzip
             _i = os.path.join(DSDIR, item+'.zip')
             _o = os.path.join(TMPDIR, item)
             path = None
             # if file exists
-            if os.path.exists(_i):
+            if os.path.isfile(_i):
                 _ = unarchiver.unzip_file(_i, _o)
                 if _:
                     path = _['final_path']
                 else:
-                    tqdm.write('unzip failed: '+_i)
+                    tqdm.write('❌ unzip failed: '+_i)
 
             else:
-                tqdm.write('archive zip file not found: '+_i)
+                tqdm.write(f'❌ zip file for {item} not found: '+_i)
 
             if path is None:
                 files = []
             else:
                 files = with_extensios(path, exts)
+                # read already-indexed files from db.
+                indexed = []
+                for row in cursor.execute('SELECT path FROM files WHERE repo = ?', (item,)):
+                    indexed.append(row[0])
+                # remove already-indexed files
+                files = [f for f in files if os.path.relpath(
+                    f, path) not in indexed]
 
             for _f in files:
-                tqdm.write(f'indexing..: {item} {relpath}')
                 relpath = os.path.relpath(_f, path)
+                lang = Path(_f).suffix.split('.')[-1]
                 # index files to sqlite db
-                with open(_f, 'r') as f:
-                    content = f.read()
-                    cursor.execute(
-                        # columns: repo, path, content
-                        'INSERT INTO files VALUES (?, ?, ?)', (item, relpath, content))
-                    tqdm.write(f'indexed: {item} {relpath}')
-                    db.commit()
+                if os.path.isfile(_f):
+                    with open(_f, 'r') as f:
+                        try:
+                            content = f.read()
+                            # columns: repo, path, content
+                            # insert if not exists
+                            cursor.execute(
+                                'INSERT OR IGNORE INTO files VALUES (?, ?, ?, ?)', (item, relpath, content, lang))
+                            tqdm.write(f'✅ {item} {relpath}')
+                            db.commit()
+                        except UnicodeDecodeError as e:
+                            tqdm.write(
+                                f'skipping (decode error): {item} {relpath}')
+                            pass
 
             progress.update(1)
 
     except KeyboardInterrupt as e:
+        # clear temp dir
+        shutil.rmtree(TMPDIR)
+        # close db
         db.close()
         exit()
