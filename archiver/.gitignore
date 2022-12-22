@@ -2,6 +2,7 @@ archives
 archives*
 samples
 tmp
+.db
 
 
 # --------
