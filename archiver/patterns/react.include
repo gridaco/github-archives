@@ -1,0 +1,9 @@
+*.js
+*.jsx
+*.ts
+*.tsx
+*.css
+*.scss
+*.sass
+*.html
+package.json
