@@ -21,12 +21,14 @@ def print_warnings(silent=False):
         print(
             "WARNING: PUBLIC_GITHUB_ARCHIVES_DIR not set, using default: " + ARCHIVES_DIR)
 
+
 def set_archives_dir(dir):
     global ARCHIVES_DIR
     ARCHIVES_DIR = dir
     global UNARCHIVES_DIR
     if UNARCHIVES_DIR == ARCHIVES_DIR_FALLBACK:
         UNARCHIVES_DIR = dir
+
 
 def set_unarchives_dir(dir):
     global UNARCHIVES_DIR
